@@ -1,3 +1,4 @@
+//Index.js
 const express = require('express');
 const router = express.Router();
 
@@ -13,7 +14,5 @@ router.use('/login', loginRouter);
 router.use('/logout', loginRouter);
 router.use('/signup', signupRouter);
 router.use('/check-auth', loginRouter);
-
-  
 
 module.exports = router;
