@@ -4,15 +4,11 @@ const router = express.Router();
 
 // Import other route modules
 const listsRouter = require('./lists');
-const loginRouter = require('./login');
-const signupRouter = require('./signup');
+const authRouter = require('./auth');
 //console.log('loaded index.js');
 
 // Define routes
 router.use('/lists', listsRouter);
-router.use('/login', loginRouter);
-router.use('/logout', loginRouter);
-router.use('/signup', signupRouter);
-router.use('/check-auth', loginRouter);
+router.use('/auth', authRouter);
 
 module.exports = router;

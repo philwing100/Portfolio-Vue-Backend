@@ -10,7 +10,7 @@ const router = express.Router();
 passport.use(new GoogleStrategy({
     clientID: dbinfo.googleClientId,
     clientSecret: dbinfo.googleClientSecret,
-    callbackURL: '/api/login/google/callback',
+    callbackURL: '/api/auth/google/callback',
     passReqToCallback: true
   },
   async (req, accessToken, refreshToken, profile, done) => {
@@ -60,8 +60,8 @@ router.get('/google', passport.authenticate('google', { scope: ['email'] }));
 // Google callback route
 router.get('/google/callback',
   passport.authenticate('google', {
-    successRedirect: '/api/login/success',
-    failureRedirect: '/api/login/failure'
+    successRedirect: '/api/auth/success',
+    failureRedirect: '/api/auth/failure'
   })
 );
 
