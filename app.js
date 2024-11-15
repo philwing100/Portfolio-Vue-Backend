@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); 
 const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
@@ -28,7 +28,7 @@ const options = {
 const sessionStore = new MySQLStore(options, pool.promise());
 
 // Middleware to parse cookies and JSON bodies
-app.use(cookieParser()); // Parse cookies
+app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -43,13 +43,13 @@ app.use(session({
   key: dbinfo.key, // Unique session key
   secret: dbinfo.secret, // Secret used to sign the session cookie
   store: sessionStore, // Store session in MySQL
-  resave: false, // Avoid resaving sessions if nothing changed
-  saveUninitialized: false, // Only save sessions that have been modified
+  resave: false,
+  saveUninitialized: false,
   cookie: {
     maxAge: 1000 * 60 * 30, // Set cookie lifespan (30 minutes)
-    httpOnly: true, // For security, prevents JavaScript from accessing the cookie
+    httpOnly: true,
     secure: false, // Set true if using HTTPS (adjust for production)
-    sameSite: 'lax', // Controls cross-site cookie handling
+    sameSite: 'lax',
   },
 }));
 
@@ -60,25 +60,32 @@ app.use(passport.session());
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
-    return next(); // User is authenticated, proceed to the next middleware/route
+    return next();
   } else {
-    return res.status(401).json({ message: 'Unauthorized access, please login.' }); // User is not authenticated
+    return res.status(401).json({ message: 'Unauthorized access, please login.' });
   }
 };
 
+// Define authentication routes that should not require `isAuthenticated`
+const authRoutes = ['/logout', '/auth'];
+
+// Apply `isAuthenticated` to all `/api` routes except specified authentication routes
+app.use('/api', (req, res, next) => {
+  console.log(req.path);
+  if (authRoutes.some(route => req.path.startsWith(route))) {
+    console.log('skipping');
+    // If the path starts with an authentication route, skip `isAuthenticated`
+    return next();
+  } else {
+    // Apply `isAuthenticated` to all other `/api` routes
+    console.log('authenticating');
+    return isAuthenticated(req, res, next);
+  }
+});
+
 // Import and use routes
 const routes = require('./routes/index');
-app.use('/api', routes);
-
-// Example of protected route
-app.get('/api/protected', isAuthenticated, (req, res) => {
-  res.json({ message: 'This is a protected route', user: req.user });
-});
-
-// Static testing route (optional)
-app.get('/api/test', (req, res) => {
-  res.send('Proxy is working!');
-});
+app.use('/api', routes); // Apply isAuthenticated globally to `/api` routes
 
 // Start server
 app.listen(port, () => {

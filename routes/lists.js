@@ -2,39 +2,99 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../databaseConnection/database');
 
+// Middleware to check if the user is authenticated
 function isAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
+    console.log('they is authed for lists');
     return next();
   }
   res.status(401).json({ message: 'Unauthorized' });
 }
 
-router.get('/', isAuthenticated, (req, res) => {
-  const promisePool = pool.promise();
+// CRUD Functions for Lists
+// 1. Create a new list
+const createList = async (req, res) => {
+  console.log('top of create list)');
+  const { list_title, list_description } = req.body;
+  const { userID } = req.user; // Assuming userID is available in req.user if authenticated
+  
+  try {
+    const promisePool = pool.promise();
+    // Call the stored procedure to create the list
+    const [result] = await promisePool.query(
+      'CALL Create_new_list(?, ?, ?)', 
+      [userID, list_title || null, list_description || null]
+    );
+    res.status(201).json({ message: 'List created successfully', listID: result[0].listID });
+  } catch (err) {
+    console.error('Error creating list:', err);
+    res.status(500).json({ message: 'Error creating list' });
+  }
+};
 
-  const queries = [
-    promisePool.query('SELECT * FROM lists'),
-    promisePool.query('SELECT * FROM listItems')
-  ];
+// 2. Read all lists (or one list by ID)
+const getLists = async (req, res) => {
+  try {
+    const promisePool = pool.promise();
+    // Query to fetch lists from the database
+    const [lists] = await promisePool.query('SELECT * FROM lists');
+    res.json({ lists });
+  } catch (err) {
+    console.error('Error fetching lists:', err);
+    res.status(500).json({ message: 'Error fetching lists' });
+  }
+};
 
-  Promise.all(queries)
-    .then(results => {
-      const [listsResults, listItemsResults] = results;
-      const [lists] = listsResults;
-      const [listItems] = listItemsResults;
+// 3. Update a list by ID
+const updateList = async (req, res) => {
+  const { id } = req.params;
+  const { list_title, list_description } = req.body;
+  
+  try {
+    const promisePool = pool.promise();
+    // Call the stored procedure to update the list
+    const [result] = await promisePool.query(
+      'CALL Update_list(?, ?, ?, ?)', 
+      [id, list_title || null, list_description || null, req.user.userID]
+    );
+    res.json({ message: 'List updated successfully' });
+  } catch (err) {
+    console.error('Error updating list:', err);
+    res.status(500).json({ message: 'Error updating list' });
+  }
+};
 
-      console.log('Lists:', lists);
-      console.log('List Items:', listItems);
+const deleteList = async (req, res) => {
+  const { id } = req.params;
+  const { userID } = req.user; // Assuming the userID is available in req.user if authenticated
 
-      res.json({
-        lists,
-        listItems
-      });
-    })
-    .catch(err => {
-      console.error('Error executing queries:', err);
-      res.status(500).send('An error occurred while fetching data');
-    });
-});
+  try {
+    const promisePool = pool.promise();
+
+    // First, delete all list items associated with the given listID using the stored procedure
+    await promisePool.query(
+      'CALL Delete_all_list_items(?)', 
+      [id]
+    );
+
+    // Then, delete the list itself
+    await promisePool.query(
+      'CALL Delete_list(?, ?)', 
+      [id, userID]
+    );
+
+    res.json({ message: 'List and all associated items deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting list and items:', err);
+    res.status(500).json({ message: 'Error deleting list and items' });
+  }
+};
+
+
+// CRUD API Endpoints for Lists
+router.post('/', createList);      // Create a list
+router.get('/', getLists);         // Read lists
+router.put('/:id', updateList);    // Update a list
+router.delete('/:id', deleteList); // Delete a list
 
 module.exports = router;
